@@ -1,4 +1,4 @@
-2---
+---
 name: cart-engineer
 description: Implements ecommerce cart and checkout — a Zustand cart store, add-to-cart with toast feedback, cart drawer/sheet, quantity and remove controls, and a mock checkout flow with order summary. Use when the user wants cart, "add to cart", or checkout functionality.
 tools: Read, Grep, Glob, Edit, Write, Bash
