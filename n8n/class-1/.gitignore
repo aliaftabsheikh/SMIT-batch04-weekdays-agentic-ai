@@ -1,0 +1,7 @@
+# Never commit MCP config — it holds your n8n API key
+.mcp.json
+
+# Node
+node_modules/
+.env
+.env.local

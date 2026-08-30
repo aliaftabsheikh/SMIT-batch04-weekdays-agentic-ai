@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sentient — AI that thinks with you</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+
+    :root {
+      --bg: #0a0a0f;
+      --surface: rgba(255,255,255,0.04);
+      --border: rgba(255,255,255,0.08);
+      --text: #e4e4e7;
+      --text-dim: #a1a1aa;
+      --accent-1: #6366f1;
+      --accent-2: #06b6d4;
+      --accent-3: #8b5cf6;
+      --radius: 16px;
+      --container: 1120px;
+    }
+
+    body {
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      overflow-x: hidden;
+    }
+
+    /* ─── particles ─── */
+    .particles {
+      position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden;
+    }
+    .particle {
+      position: absolute; border-radius: 50%;
+      background: linear-gradient(135deg, var(--accent-1), var(--accent-2));
+      opacity: 0.15; filter: blur(60px);
+      animation: float var(--d, 20s) ease-in-out infinite alternate;
+    }
+    .particle:nth-child(1) { width: 500px; height: 500px; top: -10%; left: -8%; --d: 25s; }
+    .particle:nth-child(2) { width: 400px; height: 400px; bottom: -8%; right: -5%; --d: 30s; background: linear-gradient(135deg, var(--accent-3), var(--accent-1)); }
+    .particle:nth-child(3) { width: 300px; height: 300px; top: 40%; left: 50%; --d: 20s; opacity: 0.08; }
+    @keyframes float {
+      0% { transform: translate(0, 0) scale(1); }
+      100% { transform: translate(60px, -60px) scale(1.15); }
+    }
+
+    /* ─── layout ─── */
+    .container { max-width: var(--container); margin: 0 auto; padding: 0 24px; position: relative; z-index: 1; }
+
+    /* ─── nav ─── */
+    nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      padding: 16px 0;
+      background: rgba(10,10,15,0.6);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--border);
+    }
+    nav .container { display: flex; align-items: center; justify-content: space-between; }
+    .logo { font-size: 1.4rem; font-weight: 800; letter-spacing: -0.03em; }
+    .logo span { background: linear-gradient(135deg, var(--accent-1), var(--accent-2)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+    .nav-links { display: flex; gap: 32px; list-style: none; align-items: center; }
+    .nav-links a { color: var(--text-dim); text-decoration: none; font-size: 0.9rem; font-weight: 500; transition: color 0.3s; position: relative; }
+    .nav-links a::after { content: ''; position: absolute; bottom: -4px; left: 0; width: 0; height: 2px; background: linear-gradient(90deg, var(--accent-1), var(--accent-2)); transition: width 0.3s; border-radius: 2px; }
+    .nav-links a:hover { color: var(--text); }
+    .nav-links a:hover::after { width: 100%; }
+    .nav-cta { padding: 8px 20px; border-radius: 100px; background: linear-gradient(135deg, var(--accent-1), var(--accent-2)); color: #fff !important; font-weight: 600; transition: transform 0.3s, box-shadow 0.3s; }
+    .nav-cta::after { display: none !important; }
+    .nav-cta:hover { transform: scale(1.05); box-shadow: 0 0 30px rgba(99,102,241,0.4); }
+
+    /* ─── hero ─── */
+    .hero { min-height: 100vh; display: flex; align-items: center; padding-top: 80px; position: relative; }
+    .hero-content { max-width: 780px; }
+    .hero-badge {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 6px 16px; border-radius: 100px;
+      background: rgba(99,102,241,0.12); border: 1px solid rgba(99,102,241,0.2);
+      font-size: 0.8rem; font-weight: 500; color: var(--accent-1); letter-spacing: 0.02em;
+      margin-bottom: 24px; animation: fadeUp 0.8s ease-out forwards; opacity: 0;
+    }
+    .hero-badge span { width: 6px; height: 6px; border-radius: 50%; background: #22c55e; display: inline-block; animation: pulse-dot 2s infinite; }
+    @keyframes pulse-dot { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
+
+    .hero h1 {
+      font-size: clamp(2.8rem, 7vw, 4.8rem); font-weight: 800; line-height: 1.08; letter-spacing: -0.04em;
+      margin-bottom: 20px; animation: fadeUp 0.8s ease-out 0.15s forwards; opacity: 0;
+    }
+    .hero h1 .gradient-text { background: linear-gradient(135deg, var(--accent-1), var(--accent-2), var(--accent-3)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+
+    .hero p {
+      font-size: 1.15rem; color: var(--text-dim); max-width: 600px; margin-bottom: 36px;
+      animation: fadeUp 0.8s ease-out 0.3s forwards; opacity: 0;
+    }
+    .hero-actions { display: flex; gap: 16px; flex-wrap: wrap; animation: fadeUp 0.8s ease-out 0.45s forwards; opacity: 0; }
+    .btn {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 14px 32px; border-radius: 100px; font-size: 0.95rem; font-weight: 600;
+      text-decoration: none; transition: all 0.3s; cursor: pointer; border: none;
+    }
+    .btn-primary {
+      background: linear-gradient(135deg, var(--accent-1), var(--accent-2));
+      color: #fff; box-shadow: 0 0 30px rgba(99,102,241,0.25);
+    }
+    .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 0 50px rgba(99,102,241,0.45); }
+    .btn-outline {
+      background: transparent; color: var(--text); border: 1px solid var(--border);
+    }
+    .btn-outline:hover { border-color: var(--accent-1); background: rgba(99,102,241,0.08); transform: translateY(-2px); }
+
+    @keyframes fadeUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
+
+    /* ─── sections common ─── */
+    section { padding: 100px 0; }
+    .section-tag { font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.15em; color: var(--accent-1); margin-bottom: 12px; }
+    .section-title { font-size: clamp(1.8rem, 4vw, 2.6rem); font-weight: 700; letter-spacing: -0.03em; margin-bottom: 16px; }
+    .section-desc { color: var(--text-dim); max-width: 560px; font-size: 1.05rem; }
+    .section-header { margin-bottom: 56px; }
+
+    /* ─── reveal observer ─── */
+    .reveal { opacity: 0; transform: translateY(40px); transition: all 0.8s cubic-bezier(0.16, 1, 0.3, 1); }
+    .reveal.visible { opacity: 1; transform: translateY(0); }
+
+    /* ─── features ─── */
+    .features-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 24px; }
+    .feature-card {
+      padding: 32px; border-radius: var(--radius);
+      background: var(--surface); border: 1px solid var(--border);
+      transition: all 0.4s; cursor: default;
+    }
+    .feature-card:hover { transform: translateY(-6px) scale(1.02); border-color: rgba(99,102,241,0.2); box-shadow: 0 20px 60px rgba(0,0,0,0.3); }
+    .feature-icon {
+      width: 48px; height: 48px; border-radius: 12px;
+      background: linear-gradient(135deg, rgba(99,102,241,0.15), rgba(6,182,212,0.15));
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.4rem; margin-bottom: 20px;
+    }
+    .feature-card h3 { font-size: 1.15rem; font-weight: 600; margin-bottom: 8px; }
+    .feature-card p { color: var(--text-dim); font-size: 0.9rem; line-height: 1.65; }
+
+    /* ─── stats ─── */
+    .stats-grid {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 32px;
+      padding: 48px; border-radius: var(--radius);
+      background: var(--surface); border: 1px solid var(--border);
+      text-align: center;
+    }
+    .stat-number {
+      font-size: 2.8rem; font-weight: 800; letter-spacing: -0.03em;
+      background: linear-gradient(135deg, var(--accent-1), var(--accent-2));
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+    }
+    .stat-label { color: var(--text-dim); font-size: 0.9rem; margin-top: 4px; }
+
+    /* ─── testimonials ─── */
+    .testimonial-track {
+      display: flex; gap: 24px; overflow-x: auto; scroll-snap-type: x mandatory;
+      padding-bottom: 16px; -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;
+    }
+    .testimonial-track::-webkit-scrollbar { display: none; }
+    .testimonial-card {
+      flex: 0 0 340px; scroll-snap-align: start;
+      padding: 28px; border-radius: var(--radius);
+      background: var(--surface); border: 1px solid var(--border);
+      transition: all 0.3s;
+    }
+    .testimonial-card:hover { border-color: rgba(99,102,241,0.25); transform: translateY(-4px); }
+    .testimonial-card .stars { color: #f59e0b; font-size: 0.9rem; margin-bottom: 12px; letter-spacing: 2px; }
+    .testimonial-card blockquote { color: var(--text-dim); font-size: 0.9rem; line-height: 1.7; margin-bottom: 16px; }
+    .testimonial-card .author { display: flex; align-items: center; gap: 12px; }
+    .testimonial-card .avatar {
+      width: 40px; height: 40px; border-radius: 50%;
+      background: linear-gradient(135deg, var(--accent-1), var(--accent-2));
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 700; font-size: 0.85rem; color: #fff;
+    }
+    .testimonial-card .name { font-weight: 600; font-size: 0.85rem; }
+    .testimonial-card .role { color: var(--text-dim); font-size: 0.75rem; }
+
+    /* ─── pricing ─── */
+    .pricing-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 24px; align-items: start; }
+    .pricing-card {
+      padding: 36px; border-radius: var(--radius);
+      background: var(--surface); border: 1px solid var(--border);
+      transition: all 0.4s; position: relative;
+    }
+    .pricing-card:hover { transform: translateY(-4px); }
+    .pricing-card.featured {
+      border-color: var(--accent-1); background: rgba(99,102,241,0.06);
+      transform: scale(1.04);
+    }
+    .pricing-card.featured:hover { transform: scale(1.04) translateY(-4px); box-shadow: 0 0 40px rgba(99,102,241,0.15); }
+    .pricing-card .badge {
+      position: absolute; top: -12px; left: 50%; transform: translateX(-50%);
+      padding: 4px 16px; border-radius: 100px;
+      background: linear-gradient(135deg, var(--accent-1), var(--accent-2));
+      color: #fff; font-size: 0.75rem; font-weight: 600; white-space: nowrap;
+    }
+    .pricing-card h3 { font-size: 1.1rem; font-weight: 600; margin-bottom: 4px; }
+    .pricing-card .price { font-size: 2.6rem; font-weight: 800; letter-spacing: -0.03em; margin: 16px 0 4px; }
+    .pricing-card .price span { font-size: 1rem; font-weight: 400; color: var(--text-dim); }
+    .pricing-card .desc { color: var(--text-dim); font-size: 0.85rem; margin-bottom: 24px; }
+    .pricing-card ul { list-style: none; margin-bottom: 28px; }
+    .pricing-card ul li { padding: 8px 0; font-size: 0.88rem; color: var(--text-dim); display: flex; align-items: center; gap: 10px; }
+    .pricing-card ul li::before { content: '✓'; color: var(--accent-2); font-weight: 700; }
+    .pricing-card .btn { width: 100%; justify-content: center; }
+    .pricing-card .btn-outline { border-color: var(--border); }
+    .pricing-card.featured .btn { background: linear-gradient(135deg, var(--accent-1), var(--accent-2)); color: #fff; box-shadow: 0 0 30px rgba(99,102,241,0.25); }
+
+    /* ─── cta ─── */
+    .cta-section {
+      text-align: center; padding: 100px 0 80px;
+    }
+    .cta-box {
+      max-width: 640px; margin: 0 auto;
+      padding: 56px 40px; border-radius: var(--radius);
+      background: var(--surface); border: 1px solid var(--border);
+    }
+    .cta-box h2 { font-size: clamp(1.6rem, 3vw, 2.2rem); margin-bottom: 12px; }
+    .cta-box p { color: var(--text-dim); margin-bottom: 32px; }
+    .input-group { display: flex; gap: 12px; max-width: 440px; margin: 0 auto; }
+    .input-group input {
+      flex: 1; padding: 14px 20px; border-radius: 100px; border: 1px solid var(--border);
+      background: rgba(255,255,255,0.03); color: var(--text); font-family: inherit; font-size: 0.9rem;
+      outline: none; transition: all 0.3s;
+    }
+    .input-group input:focus { border-color: var(--accent-1); box-shadow: 0 0 0 4px rgba(99,102,241,0.1); }
+    .input-group input::placeholder { color: var(--text-dim); }
+    .input-group .btn { flex-shrink: 0; }
+
+    /* ─── footer ─── */
+    footer { border-top: 1px solid var(--border); padding: 32px 0; text-align: center; }
+    footer p { color: var(--text-dim); font-size: 0.8rem; }
+    footer .footer-links { display: flex; justify-content: center; gap: 24px; margin-bottom: 12px; flex-wrap: wrap; }
+    footer .footer-links a { color: var(--text-dim); text-decoration: none; font-size: 0.8rem; transition: color 0.3s; }
+    footer .footer-links a:hover { color: var(--text); }
+
+    /* ─── responsive ─── */
+    @media (max-width: 768px) {
+      nav .container { flex-wrap: wrap; gap: 12px; }
+      .nav-links { gap: 20px; }
+      .nav-links a { font-size: 0.8rem; }
+      section { padding: 64px 0; }
+      .stats-grid { padding: 32px 20px; gap: 24px; }
+      .stat-number { font-size: 2rem; }
+      .pricing-card.featured { transform: none; }
+      .pricing-card.featured:hover { transform: translateY(-4px); }
+      .cta-box { padding: 36px 24px; }
+      .input-group { flex-direction: column; }
+      .hero-actions { flex-direction: column; }
+      .btn { justify-content: center; }
+    }
+    @media (max-width: 480px) {
+      .nav-links li:not(:last-child) { display: none; }
+      .testimonial-card { flex: 0 0 280px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="particles">
+    <div class="particle"></div>
+    <div class="particle"></div>
+    <div class="particle"></div>
+  </div>
+
+  <nav>
+    <div class="container">
+      <div class="logo"><span>Sentient</span></div>
+      <ul class="nav-links">
+        <li><a href="#features">Features</a></li>
+        <li><a href="#pricing">Pricing</a></li>
+        <li><a href="#cta" class="nav-cta">Get Started</a></li>
+      </ul>
+    </div>
+  </nav>
+
+  <section class="hero">
+    <div class="container hero-content">
+      <div class="hero-badge"><span></span> Now in public beta</div>
+      <h1>
+        AI that<br>
+        <span class="gradient-text">thinks with you</span>
+      </h1>
+      <p>Sentient is an agentic AI workspace that plans, researches, writes, and ships — all from a single conversation. Context-aware, tool-connected, and built for teams.</p>
+      <div class="hero-actions">
+        <a href="#" class="btn btn-primary">Start free trial &rarr;</a>
+        <a href="#features" class="btn btn-outline">Learn more</a>
+      </div>
+    </div>
+  </section>
+
+  <section id="features">
+    <div class="container">
+      <div class="section-header reveal">
+        <div class="section-tag">Features</div>
+        <h2 class="section-title">Everything you need to ship faster</h2>
+        <p class="section-desc">One intelligent workspace that understands your codebase, your tools, and your team's workflows.</p>
+      </div>
+      <div class="features-grid">
+        <div class="feature-card reveal"><div class="feature-icon">🧠</div><h3>Deep context</h3><p>Understands your entire codebase — not just files you open. Semantic indexing across languages and frameworks.</p></div>
+        <div class="feature-card reveal"><div class="feature-icon">🔌</div><h3>Tool ecosystem</h3><p>Connects to your APIs, databases, and cloud services. Custom MCP servers for anything your stack needs.</p></div>
+        <div class="feature-card reveal"><div class="feature-icon">👥</div><h3>Team sync</h3><p>Shared sessions, change reviews, and agent handoffs. Collaborate with your team without leaving the flow.</p></div>
+        <div class="feature-card reveal"><div class="feature-icon">🔒</div><h3>Private by design</h3><p>Your code never leaves your infrastructure. On-premise deployment with full audit trails and RBAC.</p></div>
+        <div class="feature-card reveal"><div class="feature-icon">⚡</div><h3>Agentic workflows</h3><p>Plan, research, write tests, and deploy — multi-step pipelines that execute autonomously with your approval.</p></div>
+        <div class="feature-card reveal"><div class="feature-icon">📊</div><h3>Observability</h3><p>Trace every decision, token, and tool call. Debug agent behavior with full session replay and cost analytics.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="container">
+      <div class="stats-grid reveal">
+        <div><div class="stat-number">98%</div><div class="stat-label">Task completion rate</div></div>
+        <div><div class="stat-number">4.2×</div><div class="stat-label">Faster shipping</div></div>
+        <div><div class="stat-number">47k+</div><div class="stat-label">Active developers</div></div>
+        <div><div class="stat-number">99.9%</div><div class="stat-label">Platform uptime</div></div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="container">
+      <div class="section-header reveal">
+        <div class="section-tag">Testimonials</div>
+        <h2 class="section-title">Trusted by engineering teams</h2>
+        <p class="section-desc">From indie developers to Fortune 500 teams — Sentient fits every workflow.</p>
+      </div>
+      <div class="testimonial-track reveal">
+        <div class="testimonial-card"><div class="stars">★★★★★</div><blockquote>Sentient cut our PR cycle from days to hours. The context awareness is uncanny — it catches edge cases our senior devs missed.</blockquote><div class="author"><div class="avatar">RK</div><div><div class="name">Rebecca Kim</div><div class="role">CTO, Stackforge</div></div></div></div>
+        <div class="testimonial-card"><div class="stars">★★★★★</div><blockquote>We replaced three separate tools with Sentient. The agent handoff between planning and execution is seamless.</blockquote><div class="author"><div class="avatar">MJ</div><div><div class="name">Marcus Johnson</div><div class="role">Lead Engineer, Qwyk</div></div></div></div>
+        <div class="testimonial-card"><div class="stars">★★★★★</div><blockquote>Finally, an AI coding tool that respects our security requirements. On-prem deployment was straightforward.</blockquote><div class="author"><div class="avatar">AL</div><div><div class="name">Aisha Lopez</div><div class="role">Security Architect, OmniCorp</div></div></div></div>
+        <div class="testimonial-card"><div class="stars">★★★★☆</div><blockquote>The observability features alone are worth it. We can trace exactly why the agent made every decision.</blockquote><div class="author"><div class="avatar">DT</div><div><div class="name">David Tran</div><div class="role">Tech Lead, Pylon</div></div></div></div>
+        <div class="testimonial-card"><div class="stars">★★★★★</div><blockquote>Sentient understands our monorepo better than most of our onboarding docs. New hires ramp in days, not weeks.</blockquote><div class="author"><div class="avatar">SP</div><div><div class="name">Sarah Park</div><div class="role">VP Eng, Driftwood</div></div></div></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="pricing">
+    <div class="container">
+      <div class="section-header reveal">
+        <div class="section-tag">Pricing</div>
+        <h2 class="section-title">Plans for every stage</h2>
+        <p class="section-desc">Start free, upgrade when you need more. No hidden fees, no surprise bills.</p>
+      </div>
+      <div class="pricing-grid">
+        <div class="pricing-card reveal">
+          <h3>Starter</h3>
+          <div class="price">$29<span>/mo</span></div>
+          <div class="desc">For solo developers and small projects.</div>
+          <ul>
+            <li>5 active sessions</li>
+            <li>Basic tool integration</li>
+            <li>Community support</li>
+            <li>500k tokens / month</li>
+          </ul>
+          <a href="#" class="btn btn-outline">Get started</a>
+        </div>
+        <div class="pricing-card featured reveal">
+          <div class="badge">Most popular</div>
+          <h3>Pro</h3>
+          <div class="price">$79<span>/mo</span></div>
+          <div class="desc">For professional teams shipping daily.</div>
+          <ul>
+            <li>Unlimited sessions</li>
+            <li>Custom MCP servers</li>
+            <li>Priority support</li>
+            <li>5M tokens / month</li>
+            <li>Team workspaces</li>
+          </ul>
+          <a href="#" class="btn btn-primary">Start trial</a>
+        </div>
+        <div class="pricing-card reveal">
+          <h3>Enterprise</h3>
+          <div class="price">Custom</div>
+          <div class="desc">For organizations needing control and scale.</div>
+          <ul>
+            <li>On-premise deployment</li>
+            <li>SSO &amp; RBAC</li>
+            <li>Dedicated support</li>
+            <li>Unlimited tokens</li>
+            <li>Custom integrations</li>
+            <li>SLA guarantee</li>
+          </ul>
+          <a href="#" class="btn btn-outline">Contact sales</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="cta-section" id="cta">
+    <div class="container">
+      <div class="cta-box reveal">
+        <h2>Ready to ship with AI?</h2>
+        <p>Join thousands of teams already building faster with Sentient. No credit card required.</p>
+        <div class="input-group">
+          <input type="email" placeholder="Enter your work email" />
+          <a href="#" class="btn btn-primary">Get started</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer><div class="container"><div class="footer-links"><a href="#">Docs</a><a href="#">Changelog</a><a href="#">Status</a><a href="#">Privacy</a><a href="#">Terms</a></div><p>&copy; 2026 Sentient. All rights reserved.</p></div></footer>
+
+  <script>
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) entry.target.classList.add('visible');
+      });
+    }, { threshold: 0.15 });
+    document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+  </script>
+</body>
+</html>
