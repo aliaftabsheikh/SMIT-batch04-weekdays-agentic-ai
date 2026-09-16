@@ -32,6 +32,7 @@ agent = Agent(
     name="Assistant",
     instructions="You are a helpful assistant",
     tools=[WebSearchTool()]
+    
 )
 
 # @tool
