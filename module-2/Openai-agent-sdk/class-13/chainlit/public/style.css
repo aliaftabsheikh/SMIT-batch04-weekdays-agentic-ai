@@ -1,0 +1,508 @@
+/* Nova — depth + motion layer.
+ *
+ * The palette itself lives in public/theme.json. The frontend applies those as
+ * INLINE styles on <html> (Object.entries(...).forEach(setProperty)), and inline
+ * styles beat stylesheet rules — so never redefine --background, --primary, etc.
+ * here. Everything below either consumes those vars or defines new --nova-* ones.
+ *
+ * Selectors are anchored to Chainlit's stable ids (#message-composer, #chat-input,
+ * #thread-history, #starters, ...) and semantic classes (.ai-message, .step,
+ * .message-content). Hashed utility classes are deliberately avoided so a Chainlit
+ * upgrade degrades the styling instead of destroying the layout.
+ */
+
+:root {
+  /* Written every frame by scene.js; range roughly -1..1, 0 when idle. */
+  --nova-mx: 0;
+  --nova-my: 0;
+
+  --nova-glow: 205 100% 60%;
+  /* Bottom stop of the sidebar gradient. Themed, because a hardcoded dark blue
+     bled into light mode and faded the sidebar to near-black. */
+  --nova-sidebar-fade: 208 45% 91%;
+  --nova-tilt: 2.2deg;
+  --nova-ease: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+html.dark {
+  --nova-sidebar-fade: 222 50% 6%;
+}
+
+/* ---------------------------------------------------------------- canvas bed */
+
+#nova-canvas {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.9;
+}
+
+/* The app must float above the canvas, and must not paint an opaque ground over
+   it — hence the transparent backgrounds on the scroll containers below. */
+#app,
+#root {
+  position: relative;
+  z-index: 1;
+  background: transparent;
+}
+
+/* Chainlit's <main> carries bg-background, an opaque slab over the whole
+   viewport. Left alone it hides the canvas completely. The sidebar keeps its
+   own background so the two panels stay visually distinct. */
+main.bg-background,
+#app > main,
+[data-slot="sidebar-inset"] {
+  background: transparent !important;
+}
+
+body {
+  background:
+    radial-gradient(1200px 700px at 12% -10%, hsl(var(--nova-glow) / 0.16), transparent 60%),
+    radial-gradient(900px 600px at 92% 8%, hsl(226 90% 62% / 0.13), transparent 62%),
+    radial-gradient(800px 800px at 50% 115%, hsl(190 95% 55% / 0.10), transparent 65%),
+    hsl(var(--background));
+  background-attachment: fixed;
+}
+
+/* ------------------------------------------------------------------- surfaces */
+
+/* Frosted glass for assistant turns. */
+.ai-message .message-content {
+  position: relative;
+  padding: 1rem 1.15rem;
+  border-radius: var(--radius);
+  background: hsl(var(--card) / 0.55);
+  backdrop-filter: blur(14px) saturate(160%);
+  -webkit-backdrop-filter: blur(14px) saturate(160%);
+  border: 1px solid hsl(var(--border) / 0.7);
+  box-shadow:
+    0 1px 0 0 hsl(0 0% 100% / 0.06) inset,
+    0 10px 30px -12px hsl(222 60% 2% / 0.55),
+    0 2px 8px -4px hsl(var(--nova-glow) / 0.18);
+  transition: box-shadow 0.4s var(--nova-ease), transform 0.4s var(--nova-ease);
+}
+
+/* Hairline of light along the top edge — the thing that reads as "lit from above". */
+.ai-message .message-content::before {
+  content: "";
+  position: absolute;
+  inset-inline: 12%;
+  top: -1px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, hsl(var(--nova-glow) / 0.65), transparent);
+  opacity: 0.8;
+}
+
+/* User turns: solid accent slab, deliberately flatter so the two roles read apart. */
+[id^="step-"] .message-content:not(.ai-message .message-content) {
+  border-radius: var(--radius);
+}
+
+/* -------------------------------------------------------- 3D tilt + parallax */
+
+/* Perspective lives on the scroll container so children share one vanishing point. */
+[id^="step-"] {
+  transform-style: preserve-3d;
+  perspective: 1400px;
+}
+
+.ai-message .message-content {
+  transform:
+    rotateY(calc(var(--nova-mx) * var(--nova-tilt)))
+    rotateX(calc(var(--nova-my) * var(--nova-tilt) * -1))
+    translateZ(0);
+}
+
+.ai-message .message-content:hover {
+  box-shadow:
+    0 1px 0 0 hsl(0 0% 100% / 0.1) inset,
+    0 18px 45px -14px hsl(222 60% 2% / 0.7),
+    0 0 0 1px hsl(var(--nova-glow) / 0.25),
+    0 6px 22px -8px hsl(var(--nova-glow) / 0.35);
+}
+
+/* ------------------------------------------------------ message entrance */
+
+@keyframes nova-rise {
+  from { opacity: 0; transform: translate3d(0, 14px, -40px); }
+  to   { opacity: 1; transform: translate3d(0, 0, 0); }
+}
+
+[id^="step-"] {
+  animation: nova-rise 0.5s var(--nova-ease) both;
+}
+
+/* ------------------------------------------------------- thinking animation */
+
+/* The thinking state is the assistant bubble before its first token -- no extra
+ * element to create and tear down. Chainlit renders the bubble as soon as the
+ * empty message is sent, and :empty identifies it (the :has() variant covers
+ * the case where markdown rendering leaves an empty <p> behind). */
+@keyframes nova-shimmer {
+  0%   { background-position: -150% 0; }
+  100% { background-position: 250% 0; }
+}
+
+@keyframes nova-breathe {
+  0%, 100% { opacity: 1;   transform: scale(1); }
+  50%      { opacity: 0.35; transform: scale(0.72); }
+}
+
+.ai-message .message-content:empty::after,
+.ai-message .message-content:has(> p:only-child:empty)::after {
+  content: "Thinking";
+  display: inline-block;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  background: linear-gradient(
+    90deg,
+    hsl(var(--muted-foreground)) 0%,
+    hsl(var(--nova-glow)) 45%,
+    hsl(190 95% 72%) 55%,
+    hsl(var(--muted-foreground)) 100%
+  );
+  background-size: 250% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: nova-shimmer 2.1s linear infinite;
+}
+
+/* Three dots breathing in sequence, in front of the shimmer text. */
+.ai-message .message-content:empty::before,
+.ai-message .message-content:has(> p:only-child:empty)::before {
+  content: "";
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  margin-right: 0.6rem;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: hsl(var(--nova-glow));
+  box-shadow:
+    12px 0 0 hsl(var(--nova-glow) / 0.75),
+    24px 0 0 hsl(var(--nova-glow) / 0.5);
+  animation: nova-breathe 1.3s ease-in-out infinite;
+  /* The two extra dots are box-shadows, so reserve their width manually. */
+  margin-right: 2.1rem;
+}
+
+/* Chainlit lays the bubble out as a flex column, which stacks the two
+   pseudo-elements vertically. Switch the empty state to a row so the dots sit
+   inline in front of the label. */
+.ai-message .message-content:empty,
+.ai-message .message-content:has(> p:only-child:empty) {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  min-height: 1.5rem;
+}
+
+/* ------------------------------------------------------------------ composer */
+
+#message-composer {
+  position: relative;
+  border-radius: calc(var(--radius) * 1.1);
+  background: hsl(var(--card) / 0.7);
+  backdrop-filter: blur(18px) saturate(170%);
+  -webkit-backdrop-filter: blur(18px) saturate(170%);
+  border: 1px solid hsl(var(--border) / 0.85);
+  box-shadow:
+    0 1px 0 0 hsl(0 0% 100% / 0.07) inset,
+    0 18px 45px -20px hsl(222 60% 2% / 0.8);
+  transition: box-shadow 0.35s var(--nova-ease), border-color 0.35s var(--nova-ease);
+}
+
+/* Focus treatment.
+ *
+ * An earlier version used a conic-gradient ring clipped with mask-composite.
+ * It rendered as a diagonal wedge across the page in Chromium -- when the mask
+ * does not apply, a conic gradient's hard stop paints as a straight edge through
+ * the whole box. Layered box-shadows give the same lit-edge read with no mask.
+ */
+@keyframes nova-sweep {
+  0%   { background-position: -120% 0; }
+  100% { background-position: 220% 0; }
+}
+
+/* A light sweeping along the top edge, clipped to the composer. */
+#message-composer::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.35s var(--nova-ease);
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    hsl(var(--nova-glow) / 0.16) 45%,
+    hsl(190 95% 60% / 0.2) 55%,
+    transparent 100%
+  );
+  background-size: 220% 100%;
+  background-repeat: no-repeat;
+}
+
+#message-composer:focus-within::after {
+  opacity: 1;
+  animation: nova-sweep 2.8s var(--nova-ease) infinite;
+}
+
+#message-composer:focus-within {
+  border-color: hsl(var(--nova-glow) / 0.55);
+  box-shadow:
+    0 1px 0 0 hsl(0 0% 100% / 0.09) inset,
+    0 20px 55px -22px hsl(222 60% 2% / 0.85),
+    0 0 0 1px hsl(var(--nova-glow) / 0.35),
+    0 0 34px -8px hsl(var(--nova-glow) / 0.45);
+}
+
+#chat-input {
+  background: transparent;
+}
+
+#chat-submit,
+#stop-button {
+  transition: transform 0.25s var(--nova-ease), box-shadow 0.25s var(--nova-ease);
+}
+
+#chat-submit:hover {
+  transform: translateY(-1px) scale(1.04);
+  box-shadow: 0 6px 18px -6px hsl(var(--nova-glow) / 0.6);
+}
+
+/* ------------------------------------------------------------------- sidebar */
+
+[data-sidebar="sidebar"] {
+  background:
+    linear-gradient(180deg, hsl(var(--sidebar-background)) 0%, hsl(var(--nova-sidebar-fade)) 100%),
+    hsl(var(--sidebar-background));
+  border-right: 1px solid hsl(var(--sidebar-border) / 0.9);
+  backdrop-filter: blur(10px);
+}
+
+/* Thread rows: quiet by default, lit when active or hovered. */
+#thread-history a,
+#thread-history [role="button"],
+#thread-history li {
+  border-radius: calc(var(--radius) * 0.6);
+  transition: background 0.25s var(--nova-ease), box-shadow 0.25s var(--nova-ease),
+    transform 0.25s var(--nova-ease);
+}
+
+#thread-history a:hover,
+#thread-history [role="button"]:hover {
+  transform: translateX(2px);
+  background: hsl(var(--sidebar-accent) / 0.8);
+}
+
+#thread-history [data-active="true"],
+#thread-history a[aria-current="page"] {
+  background: hsl(var(--sidebar-accent));
+  box-shadow: inset 2px 0 0 0 hsl(var(--nova-glow));
+}
+
+#new-chat-button {
+  transition: box-shadow 0.3s var(--nova-ease), transform 0.3s var(--nova-ease);
+}
+
+#new-chat-button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 22px -10px hsl(var(--nova-glow) / 0.65);
+}
+
+/* ------------------------------------------------------------------ starters */
+
+#starters button {
+  border-radius: calc(var(--radius) * 0.9);
+  background: hsl(var(--card) / 0.5);
+  backdrop-filter: blur(12px) saturate(150%);
+  -webkit-backdrop-filter: blur(12px) saturate(150%);
+  border: 1px solid hsl(var(--border) / 0.75);
+  box-shadow: 0 10px 28px -18px hsl(222 60% 2% / 0.9);
+  transition: transform 0.3s var(--nova-ease), box-shadow 0.3s var(--nova-ease),
+    border-color 0.3s var(--nova-ease);
+}
+
+#starters button:hover {
+  transform: translateY(-3px) rotateX(3deg);
+  border-color: hsl(var(--nova-glow) / 0.5);
+  box-shadow:
+    0 16px 36px -18px hsl(222 60% 2% / 0.95),
+    0 0 22px -8px hsl(var(--nova-glow) / 0.45);
+}
+
+/* ---------------------------------------------------------- code and images */
+
+/* Chainlit already highlights fenced code; this just seats the block in the theme. */
+.message-content pre {
+  /* Long lines must scroll inside the block; without this they are simply
+     clipped at the card edge and the code becomes unreadable. */
+  overflow-x: auto;
+  max-width: 100%;
+  border-radius: calc(var(--radius) * 0.75);
+  border: 1px solid hsl(var(--border) / 0.9);
+  background: hsl(222 50% 4% / 0.75) !important;
+  box-shadow: 0 10px 30px -18px hsl(222 60% 2% / 0.9);
+}
+
+/* highlight.js ships a warm default palette (pink keywords, red literals) that
+ * fights a blue interface. Retint the tokens that actually carry meaning and
+ * leave the rest inheriting the body color. */
+.message-content pre code.hljs,
+.message-content pre code {
+  background: transparent !important;
+  color: hsl(213 30% 88%);
+}
+
+.message-content .hljs-keyword,
+.message-content .hljs-selector-tag,
+.message-content .hljs-literal,
+.message-content .hljs-doctag { color: hsl(265 90% 78%); }
+
+.message-content .hljs-string,
+.message-content .hljs-regexp,
+.message-content .hljs-addition { color: hsl(160 70% 60%); }
+
+.message-content .hljs-title,
+.message-content .hljs-title.function_,
+.message-content .hljs-section { color: hsl(205 100% 68%); }
+
+.message-content .hljs-built_in,
+.message-content .hljs-type,
+.message-content .hljs-class .hljs-title { color: hsl(188 90% 62%); }
+
+.message-content .hljs-number,
+.message-content .hljs-symbol { color: hsl(35 90% 68%); }
+
+.message-content .hljs-attr,
+.message-content .hljs-attribute,
+.message-content .hljs-variable,
+.message-content .hljs-params { color: hsl(213 35% 84%); }
+
+.message-content .hljs-comment,
+.message-content .hljs-quote { color: hsl(215 18% 52%); font-style: italic; }
+
+.message-content .hljs-meta { color: hsl(226 60% 70%); }
+
+.message-content pre code {
+  display: block;
+  min-width: max-content;
+}
+
+.message-content :not(pre) > code {
+  padding: 0.12em 0.4em;
+  border-radius: 0.4em;
+  background: hsl(var(--nova-glow) / 0.12);
+  color: hsl(203 100% 82%);
+  font-size: 0.9em;
+}
+
+.message-content table {
+  display: block;
+  overflow-x: auto;
+  max-width: 100%;
+}
+
+.message-content img {
+  border-radius: calc(var(--radius) * 0.85);
+  border: 1px solid hsl(var(--border) / 0.8);
+  box-shadow:
+    0 20px 50px -24px hsl(222 60% 2% / 0.95),
+    0 0 0 1px hsl(var(--nova-glow) / 0.12);
+  transition: transform 0.45s var(--nova-ease), box-shadow 0.45s var(--nova-ease);
+}
+
+.message-content img:hover {
+  transform: translateY(-3px) scale(1.01);
+  box-shadow:
+    0 28px 60px -26px hsl(222 60% 2% / 1),
+    0 0 26px -10px hsl(var(--nova-glow) / 0.45);
+}
+
+/* ---------------------------------------------------------------- scrollbars */
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: hsl(var(--nova-glow) / 0.35) transparent;
+}
+
+*::-webkit-scrollbar { width: 9px; height: 9px; }
+*::-webkit-scrollbar-track { background: transparent; }
+
+*::-webkit-scrollbar-thumb {
+  border-radius: 99px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+  background-color: hsl(var(--nova-glow) / 0.3);
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background-color: hsl(var(--nova-glow) / 0.55);
+}
+
+/* --------------------------------------------------------------- light theme */
+
+/* The glass recipe assumes a dark ground; soften it so light mode stays readable. */
+html:not(.dark) .ai-message .message-content,
+html:not(.dark) #message-composer,
+html:not(.dark) #starters button {
+  background: hsl(0 0% 100% / 0.72);
+  box-shadow:
+    0 1px 0 0 hsl(0 0% 100% / 0.9) inset,
+    0 10px 30px -16px hsl(215 40% 40% / 0.35);
+}
+
+html:not(.dark) .message-content pre {
+  background: hsl(210 45% 96%) !important;
+}
+
+html:not(.dark) .message-content pre code { color: hsl(222 47% 20%); }
+html:not(.dark) .message-content .hljs-keyword,
+html:not(.dark) .message-content .hljs-literal { color: hsl(265 70% 48%); }
+html:not(.dark) .message-content .hljs-string { color: hsl(160 70% 30%); }
+html:not(.dark) .message-content .hljs-title { color: hsl(210 90% 42%); }
+html:not(.dark) .message-content .hljs-built_in { color: hsl(190 85% 32%); }
+html:not(.dark) .message-content .hljs-number { color: hsl(28 85% 40%); }
+html:not(.dark) .message-content .hljs-comment { color: hsl(215 16% 48%); }
+
+html:not(.dark) .message-content :not(pre) > code {
+  color: hsl(212 90% 34%);
+}
+
+html:not(.dark) body {
+  background:
+    radial-gradient(1200px 700px at 12% -10%, hsl(var(--nova-glow) / 0.1), transparent 60%),
+    radial-gradient(900px 600px at 92% 8%, hsl(226 90% 62% / 0.08), transparent 62%),
+    hsl(var(--background));
+}
+
+/* ------------------------------------------------------------ reduced motion */
+
+@media (prefers-reduced-motion: reduce) {
+  #nova-canvas { display: none; }
+
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+
+  .ai-message .message-content,
+  #starters button {
+    transform: none !important;
+  }
+
+  /* The shimmer relies on transparent text; without the animation it must be
+     given a real color back or the label disappears entirely. */
+  .ai-message .message-content:empty::after,
+  .ai-message .message-content:has(> p:only-child:empty)::after {
+    background: none;
+    color: hsl(var(--muted-foreground));
+    -webkit-text-fill-color: currentColor;
+  }
+}
